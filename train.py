@@ -11,15 +11,6 @@ from sklearn import preprocessing
 from sklearn.utils import shuffle
 
 
-# Score: 
-#   * n = predited_clicking_time
-# 	* m = total_user_search_for that query
-# 	score = n / m
-
-# Features: 
-# 	* f1 to f33
-#	* 
-
 @dataclass
 class regression_set:
 	media_id: list
@@ -65,7 +56,7 @@ class Linear_regression_model:
 
 def Data_Preprocessor(path):
 
-	data = pd.read_csv("../{}.csv".format(path))
+	data = pd.read_csv("{}.csv".format(path))
 	query = data['query']
 	data[['f1', 'f15']] = data[['f1', 'f15']].replace([True, False], [1,0])
 	data.iloc[:,5:11] = data.iloc[:,5:11].replace([True, False], [1,0])
@@ -104,26 +95,26 @@ def Data_Preprocessor(path):
 	return regression_dic
 
 
-def train_validation_split(input_X, input_Y, train_rate, cv_rate):
+def train_validation_split(input_X, input_Y, train_rate, validation_rate):
 	
 	# shuffle the data
 	X, Y = shuffle(input_X, input_Y, random_state=0)
 
 	m = X.shape[0]
 	train = round(m*train_rate)
-	cv = train + round(m*cv_rate)
+	v = train + round(m*validation_rate)
 
 	train_X = X[:train,:]
 	train_X = train_X[..., np.newaxis]
 	train_Y = Y[:train,]
 	train_Y = train_Y[..., np.newaxis]
 	
-	cv_X = X[train:cv,:]
-	cv_X = cv_X[..., np.newaxis]
-	cv_Y = Y[train:cv,]
-	cv_Y = cv_Y[..., np.newaxis]
+	valication_X = X[train:v,:]
+	valication_X = valication_X[..., np.newaxis]
+	validation_Y = Y[train:v,]
+	validation_Y = validation_Y[..., np.newaxis]
 
-	return (train_X, train_Y, cv_X, cv_Y)
+	return (train_X, train_Y, valication_X, validation_Y)
 
 def train_and_predit():
 
@@ -135,8 +126,8 @@ def train_and_predit():
 		source_X = np.array(data_set.X)
 		source_Y = np.array(data_set.Y)
 		source_media_id = data_set.media_id
-		(train_X, train_Y, cv_X, cv_Y) = train_validation_split(source_X, source_Y, config.Training_Rate, config.Cross_Validate_Rate)
-		model_dic[query] = Linear_regression_model(train_X, train_Y, cv_X, cv_Y, source_media_id)
+		(train_X, train_Y, valication_X, validation_Y) = train_validation_split(source_X, source_Y, config.Training_Rate, config.Cross_Validate_Rate)
+		model_dic[query] = Linear_regression_model(train_X, train_Y, valication_X, validation_Y, source_media_id)
 
 	with open("predictions.tsv", "w+") as file:
 		for query, model in model_dic.items():
