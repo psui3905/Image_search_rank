@@ -1,5 +1,4 @@
 
-Save_To = ""
 
 # Hyperparameters
 Learning_Rate = 0.0005

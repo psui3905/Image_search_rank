@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from sklearn.linear_model import LinearRegression
 from sklearn import preprocessing
 from sklearn.utils import shuffle
+
+
 # Score: 
 #   * n = predited_clicking_time
 # 	* m = total_user_search_for that query
@@ -44,12 +46,12 @@ class Linear_regression_model:
 	def train(self, loss_func='mean_squared_error', optimizer='RMSprop', epochs=15):
 		if optimizer == 'RMSprop':
 			self.model.compile(optimizer=keras.optimizers.RMSprop(0.001),
-							loss=loss_func,
-							metrics=['mean_absolute_error', 'mean_squared_error'])
+						loss=loss_func,
+						metrics=['mean_absolute_error', 'mean_squared_error'])
 		elif optimizer == 'adam':
 			self.model.compile(optimizer='adam',
-							loss=loss_func,
-							metrics=['mean_absolute_error', 'mean_squared_error'])
+						loss=loss_func,
+						metrics=['mean_absolute_error', 'mean_squared_error'])
 		else:
 			print("Error: Unknow Activaition function")
 			return
@@ -99,17 +101,13 @@ def Data_Preprocessor(path):
 			Y=specific_query_y,
 			)
 
-	# data_collection = [data.iloc[:, 4:35].values, data.iloc[:, 35].values, data['media_id'].values, data['query'].values]
 	return regression_dic
 
 
 def train_validation_split(input_X, input_Y, train_rate, cv_rate):
 	
-
 	# shuffle the data
 	X, Y = shuffle(input_X, input_Y, random_state=0)
-
-	# print("X shape column: {}, rows: {}".format(X.shape[1], X.shape[0]))
 
 	m = X.shape[0]
 	train = round(m*train_rate)
@@ -119,22 +117,13 @@ def train_validation_split(input_X, input_Y, train_rate, cv_rate):
 	train_X = train_X[..., np.newaxis]
 	train_Y = Y[:train,]
 	train_Y = train_Y[..., np.newaxis]
-	# print("train_X shape -- {}\ntrain_Y shape -- {}\n".format(train_X.shape, train_Y.shape))
 	
 	cv_X = X[train:cv,:]
 	cv_X = cv_X[..., np.newaxis]
 	cv_Y = Y[train:cv,]
 	cv_Y = cv_Y[..., np.newaxis]
-	# print("val_X shape -- {}\nval_Y shape -- {}\n".format(cv_X.shape, cv_Y.shape))
-
 
 	return (train_X, train_Y, cv_X, cv_Y)
-
-# class training_callBack(keras.callbacks.Callback):
-#     def on_epoch_end(self, epoch, logs={}):
-#         if logs.get('accuracy') > 0.90:
-#             print("Reached 90%  accuracy so cancelling training!")
-#             self.model.stop_training=True
 
 def train_and_predit():
 
@@ -156,15 +145,7 @@ def train_and_predit():
 			predit_y = list(predit_y)
 			truth_y = list(truth_y)
 			for index in range(len(predit_y)):
-				print("{}\t{}\t{}".format(query,truth_y[index][0],predit_y[index][0]))
 				file.write("{}\t{}\t{}\n".format(query,truth_y[index][0],predit_y[index][0]))
-
-
-
-	
-	
-
-	# history = model.fit(train_X, train_Y, epochs=10, callbacks=[callback_1])
 	return
 
 if __name__ == "__main__":
