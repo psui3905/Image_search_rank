@@ -1,5 +1,5 @@
 
-Save_To = "../Assignment-1-Output"
+Save_To = ""
 
 # Hyperparameters
 Learning_Rate = 0.0005
@@ -12,6 +12,6 @@ Regularizer = None              #please be L1 or L2 in string
 Batch_Normalization = True      #please be boolean
 OPtimization = "adam"           #please be optimization in string
 
-Training_Rate = 1              #please be 0 to 1 (inclusive)
-Cross_Validate_Rate = 0        #please be 0 to 1 (inclusive)
-Test_Rate = 0                   #please be 0 to 1 (inclusive)
+Training_Rate = 0.9             #please be 0 to 1 (inclusive)
+Cross_Validate_Rate = 0.1      	#please be 0 to 1 (inclusive)
+# Test_Rate = 0.1                 #please be 0 to 1 (inclusive)

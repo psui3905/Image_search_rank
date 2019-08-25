@@ -1,10 +1,14 @@
 import pandas as pd 
 import numpy as np 
-from sklearn import preprocessing
 from spacy.lemmatizer import Lemmatizer 
 
 import config
-
+import tensorflow as tf
+from tensorflow import keras
+from dataclasses import dataclass
+from sklearn.linear_model import LinearRegression
+from sklearn import preprocessing
+from sklearn.utils import shuffle
 # Score: 
 #   * n = predited_clicking_time
 # 	* m = total_user_search_for that query
@@ -14,8 +18,50 @@ import config
 # 	* f1 to f33
 #	* 
 
+@dataclass
+class regression_set:
+	media_id: list
+	X: list
+	Y: list
 
-def Data_Preprocessor(path:str):
+class Linear_regression_model:
+
+	def __init__(self, X, Y, c_X, c_Y, media_id):
+		self.X = X
+		self.Y = Y
+		self.c_X = c_X
+		self.c_Y = c_Y
+		self.media_id = media_id
+		self.model = tf.keras.models.Sequential([
+						keras.layers.Flatten(input_shape=(X.shape[1], 1)),
+						keras.layers.Dense(256,activation=tf.nn.relu),
+						keras.layers.Dropout(rate = 0.3),
+						keras.layers.Dense(128,activation=tf.nn.relu),
+						keras.layers.Dropout(rate = 0.3),
+						keras.layers.Dense(1,activation=tf.nn.sigmoid)
+						])
+
+	def train(self, loss_func='mean_squared_error', optimizer='RMSprop', epochs=15):
+		if optimizer == 'RMSprop':
+			self.model.compile(optimizer=keras.optimizers.RMSprop(0.001),
+							loss=loss_func,
+							metrics=['mean_absolute_error', 'mean_squared_error'])
+		elif optimizer == 'adam':
+			self.model.compile(optimizer='adam',
+							loss=loss_func,
+							metrics=['mean_absolute_error', 'mean_squared_error'])
+		else:
+			print("Error: Unknow Activaition function")
+			return
+		history = self.model.fit(self.X, self.Y, epochs=epochs)
+		return history.epoch, history.history['mean_squared_error'][-1]
+
+	def predit(self):
+		result = self.model.predict(self.c_X)
+		return (result, self.c_Y)
+
+
+def Data_Preprocessor(path):
 
 	data = pd.read_csv("../{}.csv".format(path))
 	query = data['query']
@@ -23,46 +69,105 @@ def Data_Preprocessor(path:str):
 	data.iloc[:,5:11] = data.iloc[:,5:11].replace([True, False], [1,0])
 
 	print("Normolizing the Features...")
+
 	df = data.iloc[:, 4:35]
 	names = df.columns
-	scaler = preprocessing.StandardScaler()
-	scaled_df = scaler.fit_transform(df)
+	scaled_df = preprocessing.scale(df.values)
 	data.iloc[:, 4:35] = pd.DataFrame(scaled_df, columns=names)
-	data_collection = [data.iloc[:, 4:35].values, data.iloc[:, 35].values, data['media_id'].values, data['query'].values]
-	print("Featuer dimension: {}".format(data_collection[0].shape))
-	print("Y: {}".format(data_collection[1]))
-	return data_collection
+	data = data.drop(['f2'], axis=1)
+	print(data.shape)
 
-def train_cv_test_split(X, Y, train_rate, cv_rate, test_rate):
-	m = X.shape[1]
-    train = round(m*train_rate)
-    cv = train + round(m*cv_rate)
-    test = cv + round(m*test_rate)
+	regression_dic = {}
+	# print(data['query'].unique())
+	for unique_query in data['query'].unique():
+		specific_query_data = data.loc[data['query'] == unique_query]
 
-    train_X = X[:,:train]
-    train_Y = Y[:,:train]
-    if(train_rate == 0):
-        train_X = None
+		media_id_list = list(specific_query_data['media_id'].values)
+		
+		feature = specific_query_data.iloc[:, 2:34]
+		specific_query_x = feature.values
+		specific_query_x = list(specific_query_x)
 
-    cv_X = X[:,train:cv]
-    cv_Y = Y[:, train:cv]
-    if(cv_rate == 0):
-        cv_X = None
+		y_column = specific_query_data.iloc[:,34]
+		y_sum = y_column.sum()
+		specific_query_y = (y_column / y_sum)
+		specific_query_y = list(specific_query_y.values)
 
-    test_X = X[:, cv:]
-    test_Y = Y[:, cv:]
-    if(test_rate == 0):
-        test_X = None
+		regression_dic[unique_query] = regression_set(
+			media_id=media_id_list,
+			X=specific_query_x,
+			Y=specific_query_y,
+			)
 
-    return (train_X, train_Y, cv_X, cv_Y, test_X, test_Y)
+	# data_collection = [data.iloc[:, 4:35].values, data.iloc[:, 35].values, data['media_id'].values, data['query'].values]
+	return regression_dic
 
-    
+
+def train_validation_split(input_X, input_Y, train_rate, cv_rate):
+	
+
+	# shuffle the data
+	X, Y = shuffle(input_X, input_Y, random_state=0)
+
+	# print("X shape column: {}, rows: {}".format(X.shape[1], X.shape[0]))
+
+	m = X.shape[0]
+	train = round(m*train_rate)
+	cv = train + round(m*cv_rate)
+
+	train_X = X[:train,:]
+	train_X = train_X[..., np.newaxis]
+	train_Y = Y[:train,]
+	train_Y = train_Y[..., np.newaxis]
+	# print("train_X shape -- {}\ntrain_Y shape -- {}\n".format(train_X.shape, train_Y.shape))
+	
+	cv_X = X[train:cv,:]
+	cv_X = cv_X[..., np.newaxis]
+	cv_Y = Y[train:cv,]
+	cv_Y = cv_Y[..., np.newaxis]
+	# print("val_X shape -- {}\nval_Y shape -- {}\n".format(cv_X.shape, cv_Y.shape))
+
+
+	return (train_X, train_Y, cv_X, cv_Y)
+
+# class training_callBack(keras.callbacks.Callback):
+#     def on_epoch_end(self, epoch, logs={}):
+#         if logs.get('accuracy') > 0.90:
+#             print("Reached 90%  accuracy so cancelling training!")
+#             self.model.stop_training=True
 
 def train_and_predit():
 
-	(X, Y, media_id, query) = Data_Preprocessor("data")
+	regression_dic = Data_Preprocessor("data")
+	model_dic = {}
+	evaluate_dic = {}
+
+	for query, data_set in regression_dic.items():
+		source_X = np.array(data_set.X)
+		source_Y = np.array(data_set.Y)
+		source_media_id = data_set.media_id
+		(train_X, train_Y, cv_X, cv_Y) = train_validation_split(source_X, source_Y, config.Training_Rate, config.Cross_Validate_Rate)
+		model_dic[query] = Linear_regression_model(train_X, train_Y, cv_X, cv_Y, source_media_id)
+
+	with open("predictions.tsv", "w+") as file:
+		for query, model in model_dic.items():
+			model.train()
+			(predit_y, truth_y) = model.predit()
+			predit_y = list(predit_y)
+			truth_y = list(truth_y)
+			for index in range(len(predit_y)):
+				print("{}\t{}\t{}".format(query,truth_y[index][0],predit_y[index][0]))
+				file.write("{}\t{}\t{}\n".format(query,truth_y[index][0],predit_y[index][0]))
 
 
 
+	
+	
+
+	# history = model.fit(train_X, train_Y, epochs=10, callbacks=[callback_1])
+	return
+
+if __name__ == "__main__":
+	train_and_predit()
 
 
